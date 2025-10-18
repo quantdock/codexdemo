@@ -61,11 +61,6 @@ def parse_args() -> argparse.Namespace:
         "--date-column",
         help="Optional name of the column that should be parsed as a datetime index.",
     )
-    parser.add_argument(
-        "--show-warnings",
-        action="store_true",
-        help="Display convergence and frequency warnings emitted by statsmodels during the search.",
-    )
     return parser.parse_args()
 
 
