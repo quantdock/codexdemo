@@ -8,11 +8,13 @@ seasonal model suggests the presence of a repeating cycle in the data.
 from __future__ import annotations
 
 import argparse
+import warnings
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
 import numpy as np
 import pandas as pd
+from statsmodels.tools.sm_exceptions import ConvergenceWarning, ValueWarning
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 
@@ -80,7 +82,23 @@ def load_series(path: str, column: Optional[str], date_column: Optional[str]) ->
     if series.empty:
         raise ValueError("The selected column has no data after dropping missing values.")
 
-    return series.astype(float)
+    series = series.astype(float)
+
+    if isinstance(series.index, (pd.DatetimeIndex, pd.PeriodIndex)):
+        inferred_freq = pd.infer_freq(series.index)
+        if inferred_freq is not None:
+            series = series.asfreq(inferred_freq)
+
+    return series
+
+
+def suppress_statsmodels_warnings() -> None:
+    warnings.filterwarnings("ignore", category=ConvergenceWarning)
+    warnings.filterwarnings(
+        "ignore",
+        message=".*No frequency information was provided.*",
+        category=ValueWarning,
+    )
 
 
 def candidate_orders(max_order: int, d_values: Iterable[int]) -> Iterable[tuple[int, int, int]]:
@@ -135,6 +153,9 @@ def fit_best_model(series: pd.Series, seasonal: bool, period: int, max_order: in
 
 def main() -> None:
     args = parse_args()
+
+    if not args.show_warnings:
+        suppress_statsmodels_warnings()
 
     series = load_series(args.data, args.column, args.date_column)
 
